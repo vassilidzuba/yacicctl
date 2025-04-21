@@ -18,8 +18,12 @@ package reload
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"io/ioutil"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // reloadCmd represents the reload command
@@ -28,18 +32,49 @@ var Cmd = &cobra.Command{
 	Short: "reload the actions and pipelines declarations",
 	Long: `reload the actions and pipelines declarations from the files.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("config reload called")
+		execute(cmd)
 	},
 }
 
+
+func execute(cmd *cobra.Command) {
+	
+	username := viper.GetString("username")
+	password := viper.GetString("password")
+
+	url := "http://localhost:8080/yacic/config/reload"
+
+	log.Println("url:", url)
+		
+	req, _ := http.NewRequest("GET", url, nil)
+	req.SetBasicAuth(username, password)
+
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// we will get an error at this stage if the request fails, such as if the
+		// requested URL is not found, or if the server is not reachable.
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// if we want to check for a specific status code, we can do so here
+	// for example, a successful request should return a 200 OK status
+	if resp.StatusCode != http.StatusOK {
+		// if the status code is not 200, we should log the status code and the
+		// status string, then exit with a fatal error
+		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+		//panic("bad")
+	}
+
+	// print the response
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(data))
+}
+
 func init() {
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// reloadCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// reloadCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

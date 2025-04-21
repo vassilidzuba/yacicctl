@@ -6,56 +6,69 @@ package cmd
 
 import (
 	"os"
-
-	"github.com/spf13/cobra"
+	"log"
+	"path/filepath"
 	
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	project "github.com/vassilidzuba/yacicctl/cmd/project"
     build "github.com/vassilidzuba/yacicctl/cmd/build"
     step "github.com/vassilidzuba/yacicctl/cmd/step"
 	config "github.com/vassilidzuba/yacicctl/cmd/config"
 )
 
-
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "yacicctl",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "client application for service yacic",
+	Long: `client application for service yacic.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	//Run: func(cmd *cobra.Command, args []string) { 
+	//},
 }
+
+
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal("No home directory")
+	}
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(filepath.Join(home, ".yacicctl"))
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Println("config not found")
+		} else {
+			log.Println("config found but an error occurred")
+		}
+	}
+	
+	err = rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
 func init() {
+
 	rootCmd.AddCommand(project.Cmd)
 	rootCmd.AddCommand(build.Cmd)
 	rootCmd.AddCommand(step.Cmd)
 	rootCmd.AddCommand(config.Cmd)
 	
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	rootCmd.PersistentFlags().StringP("username", "u", "", "username, facultative if you have a ~/.yacicctl/config.json file")
+	rootCmd.PersistentFlags().StringP("password", "p", "", "password, facultative if you have a ~/.yacicctl/config.json file")
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.yacicctl.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
+	viper.BindPFlag("password", rootCmd.PersistentFlags().Lookup("password"))	
 }
 
 

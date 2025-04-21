@@ -18,6 +18,7 @@ package main
 
 import "github.com/vassilidzuba/yacicctl/cmd"
 
+
 func main() {
 	cmd.Execute()
 }

@@ -18,17 +18,27 @@ package run
 
 import (
 	"fmt"
-
+	"log"
+	"net/http"
+	"io/ioutil"
+	
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // runCmd represents the run command
 var Cmd = &cobra.Command{
-	Use:   "run",
-	Short: "run apipeline",
-	Long: `run a pipeline for aprojects`,
+	Use:   "run <project> [<]branch>]",
+	Short: "run a pipeline",
+	Long: `run a pipeline for a projects`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("project run called on", args)
+		if len(args) == 1 {
+			execute(cmd, args[0], "main")
+		} else if len(args) == 2 {
+			execute(cmd, args[0], args[1])
+		} else {
+			cmd.Usage()
+		}
 	},
 }
 
@@ -41,5 +51,49 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Cmd.Flags().BoolVarP(&toggle, "toggle", "t", false, "Help message for toggle")
+}
+
+func execute(cmd *cobra.Command, project string, branch string) {
+	
+	username := viper.GetString("username")
+	password := viper.GetString("password")
+
+	fmt.Println("project run called on", project, branch, "!")
+	
+	url := "http://localhost:8080/yacic/project/run?project=" + project
+	if branch != "" {
+		url = url + "&branch=" + branch;
+	}
+
+	log.Println("url:", url)
+		
+	req, _ := http.NewRequest("GET", url, nil)
+	req.SetBasicAuth(username, password)
+
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// we will get an error at this stage if the request fails, such as if the
+		// requested URL is not found, or if the server is not reachable.
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// if we want to check for a specific status code, we can do so here
+	// for example, a successful request should return a 200 OK status
+	if resp.StatusCode != http.StatusOK {
+		// if the status code is not 200, we should log the status code and the
+		// status string, then exit with a fatal error
+		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+		//panic("bad")
+	}
+
+	// print the response
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(data))
 }
