@@ -19,24 +19,26 @@ package list
 import (
 	"fmt"
 	"log"
-	"strconv"
+	//"strconv"
 	"net/http"
 	"io/ioutil"
-	"encoding/json"
+	//"encoding/json"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/pterm/pterm"
+	//"github.com/pterm/pterm"
 )
 
 // listCmd represents the list command
 var Cmd = &cobra.Command{
-	Use:   "list <project> [<branch>] <timestamp>",
-	Short: "list the steps",
-	Long: `list the steps for a given build, identified by its project, branch and timestamp`,
+	Use:   "log <project> [<branch>] <pos>",
+	Short: "display the log of a build",
+	Long: `display the log of a build`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 2 {
-			execute(cmd, args[0], "", args[1])
+		if len(args) == 1 {
+			execute(cmd, args[0], "", "")
+		} else if len(args) == 2 {
+			execute(cmd, args[0], args[1], "")
 		} else if len(args) == 3 {
 			execute(cmd, args[0], args[1], args[2])
 		} else {
@@ -46,28 +48,19 @@ var Cmd = &cobra.Command{
 }
 
 
-type Result struct {
-	Project string `json:"projectId"`
-	Branch string `json:"branchId"`
-	Timestamp string `json:"timestamp"`
-	Step string `json:"stepId"`
-	Seq int `json:"seq"`
-	Status string `json:"status"`
-	Duration int `json:"duration"`
-}
-
-
-func execute(cmd *cobra.Command, project string, branch string, timestamp string) {
+func execute(cmd *cobra.Command, project string, branch string, pos string) {
 	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
 
-	url := "http://" + host + "/yacic/step/list?project=" + project
+	url := "http://" + host + "/yacic/project/log?project=" + project
 	if branch != "" {
 		url = url + "&branch=" + branch
 	}
-	url = url + "&timestamp=" + timestamp
+	if pos != "" {
+		url = url + "&pos=" + pos
+	}
 	
 	log.Println("url:", url)
 		
@@ -99,32 +92,7 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 		log.Fatal(err)
 	}
 	
-	format, _ := cmd.Flags().GetString("format")
-
-	if format == "raw" {
-		fmt.Println(string(data))
-	} else if format == "nice" {
-		var r []Result
-
-		json.Unmarshal(data, &r)
-		
-		if len(r) > 0 {
-			pterm.DefaultBasicText.Println(
-				pterm.LightCyan("project   ") + ": " + r[0].Project + "\n" +
-				pterm.LightCyan("branch    ") + ": " + r[0].Branch + "\n" +
-			    pterm.LightCyan("timestamp ") + ": " + r[0].Timestamp)
-		}
-		
-		tab := [][]string{{"Seq", "Step", "Duration", "Status"}}
-
-		for _, e := range r {
-		    tab = append(tab, []string{strconv.Itoa(e.Seq), e.Step, strconv.Itoa(e.Duration / 1000) + "s", e.Status})
-		}
-
-		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
-	} else {
-		log.Fatal("-format can be 'raw' or 'nice'")
-	}
+	fmt.Println(string(data))
 }
 
 

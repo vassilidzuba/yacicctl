@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	
 	list "github.com/vassilidzuba/yacicctl/cmd/build/list"
+	log "github.com/vassilidzuba/yacicctl/cmd/build/log"
 
 )
 
@@ -37,6 +38,7 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(list.Cmd)
+	Cmd.AddCommand(log.Cmd)
 
 	// Here you will define your flags and configuration settings.
 

@@ -26,24 +26,15 @@ import (
 
 // stepCmd represents the step command
 var Cmd = &cobra.Command{
-	Use:   "step",
-	Short: "commandsrelated to steps",
-	Long: `commandsrelated to steps`,
+	Use:   "step <subcommand>",
+	Short: "commands related to steps",
+	Long: `commands related to steps`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("step needs a subcommand")
+		cmd.Usage()
 	},
 }
 
 func init() {
 	Cmd.AddCommand(list.Cmd)
-	
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// stepCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// stepCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
