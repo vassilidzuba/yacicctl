@@ -19,18 +19,21 @@ package list
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"net/http"
 	"io/ioutil"
+	"encoding/json"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/pterm/pterm"
 )
 
 // listCmd represents the list command
 var Cmd = &cobra.Command{
 	Use:   "list <project> [<branch>]",
-	Short: "list the builds",
-	Long: `list the builds for a given project and branch.`,
+	Short: "list the buildsof a project/branch",
+	Long: `list the buildsof a project/branch.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			execute(cmd, args[0], "main")
@@ -42,13 +45,22 @@ var Cmd = &cobra.Command{
 	},
 }
 
+type Result struct {
+	Project string `json:"projectId"`
+	Branch string `json:"branchId"`
+	Timestamp string `json:"timestamp"`
+	Status string `json:"status"`
+	Duration int `json:"duration"`
+}
+
 
 func execute(cmd *cobra.Command, project string, branch string) {
 	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
+	host := viper.GetString("host")
 
-	url := "http://localhost:8080/yacic/build/list?project=" + project
+	url := "http://" + host + "/yacic/build/list?project=" + project
 	if branch != "" {
 		url = url + "&branch=" + branch
 	}
@@ -82,8 +94,36 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(data))
+	
+	format, _ := cmd.Flags().GetString("format")
+
+	if format == "raw" {
+		fmt.Println(string(data))
+	} else if format == "nice" {
+		var r []Result
+
+		json.Unmarshal(data, &r)
+		
+		if len(r) > 0 {
+			pterm.DefaultBasicText.Println(pterm.LightCyan("project") + ": " + r[0].Project + "\n" + pterm.LightCyan("branch ") + ": " + r[0].Branch)
+		}
+		
+		tab := [][]string{{"Timestamp", "Duration", "Status"}}
+
+		for _, e := range r {
+		    tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration / 1000) + "ms", e.Status})
+		}
+
+	
+		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+
+		pterm.Println() // Blank line
+	} else {
+		log.Fatal("-format can be 'raw' or 'nice'")
+	}
 }
 
+
 func init() {
+	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
 }

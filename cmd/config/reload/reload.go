@@ -41,8 +41,9 @@ func execute(cmd *cobra.Command) {
 	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
+	host := viper.GetString("host")
 
-	url := "http://localhost:8080/yacic/config/reload"
+	url := "http://" + host + "/yacic/config/reload"
 
 	log.Println("url:", url)
 		

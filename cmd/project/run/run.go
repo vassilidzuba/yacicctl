@@ -18,17 +18,21 @@ package run
 
 import (
 	"fmt"
+	"os"
 	"log"
+	"strconv"
 	"net/http"
 	"io/ioutil"
-	
+	"encoding/json"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/pterm/pterm"
 )
 
 // runCmd represents the run command
 var Cmd = &cobra.Command{
-	Use:   "run <project> [<]branch>]",
+	Use:   "run <project> [<branch>]",
 	Short: "run a pipeline",
 	Long: `run a pipeline for a projects`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -42,26 +46,28 @@ var Cmd = &cobra.Command{
 	},
 }
 
-func init() {
-	// Here you will define your flags and configuration settings.
+type Result struct {
+	Project   string `json:"projectId"`
+	Branch    string `json:"branchId"`
+	Timestamp string `json:"timestamp"`
+	Status    string `json:"status"`
+	Duration  int    `json:"duration"`
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// runCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// Cmd.Flags().BoolVarP(&toggle, "toggle", "t", false, "Help message for toggle")
+type ErrorResult struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 func execute(cmd *cobra.Command, project string, branch string) {
 	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
+	host := viper.GetString("host")
 
 	fmt.Println("project run called on", project, branch, "!")
 	
-	url := "http://localhost:8080/yacic/project/run?project=" + project
+	url := "http://" + host + "/yacic/project/run?project=" + project
 	if branch != "" {
 		url = url + "&branch=" + branch;
 	}
@@ -81,13 +87,29 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	}
 	defer resp.Body.Close()
 
+	format, _ := cmd.Flags().GetString("format")
+
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
 	if resp.StatusCode != http.StatusOK {
 		// if the status code is not 200, we should log the status code and the
 		// status string, then exit with a fatal error
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		//panic("bad")
+		data1, _ := ioutil.ReadAll(resp.Body)
+		e := ErrorResult{}
+		
+		json.Unmarshal(data1, &e)
+		
+		if format == "raw" {
+			log.Fatalf("status code error: %d %s\nmessage: %s", resp.StatusCode, resp.Status, e.Message)
+		} else if format == "nice" {
+			pterm.DefaultBasicText.Println(
+				pterm.LightCyan("HTTP status") + ": " + resp.Status + "\n" +
+				pterm.LightCyan("project    ") + ": " + project + "\n" +
+				pterm.LightCyan("branch     ") + ": " + branch + "\n" +
+				pterm.LightCyan("message    ") + ": " + e.Message + "\n")
+		}
+		
+		os.Exit(1)
 	}
 
 	// print the response
@@ -95,5 +117,27 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(data))
+	
+	if format == "raw" {
+		fmt.Println(string(data))
+	} else if format == "nice" {
+		var r Result
+
+		json.Unmarshal(data, &r)
+		
+		pterm.DefaultBasicText.Println(
+			pterm.LightCyan("project   ") + ": " + r.Project + "\n" +
+			pterm.LightCyan("branch    ") + ": " + r.Branch + "\n" +
+		    pterm.LightCyan("timestamp ") + ": " + r.Timestamp + "\n" +
+   			pterm.LightCyan("duration  ") + ": " + strconv.Itoa(r.Duration / 1000) + "s\n" +
+			pterm.LightCyan("status    ") + ": " + r.Status)
+		
+	} else {
+		log.Fatal("-format can be 'raw' or 'nice'")
+	}
 }
+
+func init() {
+	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
+}
+
