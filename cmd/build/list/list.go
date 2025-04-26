@@ -111,7 +111,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		tab := [][]string{{"Timestamp", "Duration", "Status"}}
 
 		for _, e := range r {
-		    tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration / 1000) + "ms", e.Status})
+		    tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration / 1000) + "s", e.Status})
 		}
 
 	
