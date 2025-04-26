@@ -48,19 +48,17 @@ var Cmd = &cobra.Command{
 }
 
 
-func execute(cmd *cobra.Command, project string, branch string, pos string) {
+func execute(cmd *cobra.Command, project string, branch string, timestamp string) {
 	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
 
-	url := "http://" + host + "/yacic/project/log?project=" + project
+	url := "http://" + host + "/yacic/build/log?project=" + project
 	if branch != "" {
 		url = url + "&branch=" + branch
 	}
-	if pos != "" {
-		url = url + "&pos=" + pos
-	}
+	url = url + "&timestamp=" + timestamp
 	
 	log.Println("url:", url)
 		
