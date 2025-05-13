@@ -80,7 +80,7 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
@@ -104,7 +104,10 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 	} else if format == "nice" {
 		var r []Result
 
-		json.Unmarshal(data, &r)
+		err = json.Unmarshal(data, &r)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		if len(r) > 0 {
 			pterm.DefaultBasicText.Println(
@@ -119,9 +122,20 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 			tab = append(tab, []string{strconv.Itoa(e.Seq), e.Step, strconv.Itoa(e.Duration/1000) + "s", e.Status})
 		}
 
-		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		err = pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		if err != nil {
+			log.Fatal(err)
+		}
+
 	} else {
 		log.Fatal("-format can be 'raw' or 'nice'")
+	}
+}
+
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 

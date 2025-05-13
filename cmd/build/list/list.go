@@ -96,12 +96,18 @@ func execute(cmd *cobra.Command, project string, branch string) {
 
 	format, _ := cmd.Flags().GetString("format")
 
-	if format == "raw" {
+	switch format {
+
+	case "raw":
 		fmt.Println(string(data))
-	} else if format == "nice" {
+
+	case "nice":
 		var r []Result
 
-		json.Unmarshal(data, &r)
+		err = json.Unmarshal(data, &r)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		if len(r) > 0 {
 			pterm.DefaultBasicText.Println(pterm.LightCyan("project") + ": " + r[0].Project + "\n" + pterm.LightCyan("branch ") + ": " + r[0].Branch)
@@ -119,8 +125,9 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		}
 
 		pterm.Println() // Blank line
-	} else {
-		log.Fatal("-format can be 'raw' or 'nice'")
+
+	default:
+		log.Fatal("--format can be 'raw' or 'nice'")
 	}
 }
 

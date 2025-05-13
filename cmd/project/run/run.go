@@ -41,7 +41,7 @@ var Cmd = &cobra.Command{
 		} else if len(args) == 2 {
 			execute(cmd, args[0], args[1])
 		} else {
-			cmd.Usage()
+			_ = cmd.Usage()
 		}
 	},
 }
@@ -121,9 +121,12 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		log.Fatal(err)
 	}
 
-	if format == "raw" {
+	switch format {
+
+	case "raw":
 		fmt.Println(string(data))
-	} else if format == "nice" {
+
+	case "nice":
 		var r Result
 
 		err := json.Unmarshal(data, &r)
@@ -138,7 +141,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 				pterm.LightCyan("duration  ") + ": " + strconv.Itoa(r.Duration/1000) + "s\n" +
 				pterm.LightCyan("status    ") + ": " + r.Status)
 
-	} else {
+	default:
 		log.Fatal("-format can be 'raw' or 'nice'")
 	}
 }
