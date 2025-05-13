@@ -99,9 +99,11 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 
 	format, _ := cmd.Flags().GetString("format")
 
-	if format == "raw" {
+	switch format {
+	case "raw":
 		fmt.Println(string(data))
-	} else if format == "nice" {
+
+	case "nice":
 		var r []Result
 
 		err = json.Unmarshal(data, &r)
@@ -127,7 +129,7 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 			log.Fatal(err)
 		}
 
-	} else {
+	default:
 		log.Fatal("-format can be 'raw' or 'nice'")
 	}
 }

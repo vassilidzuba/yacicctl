@@ -119,7 +119,10 @@ func execute(cmd *cobra.Command) {
 			}
 		}
 
-		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		err = pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 	default:
 		log.Fatal("-format can be 'raw' or 'nice'")

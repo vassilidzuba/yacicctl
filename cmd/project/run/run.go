@@ -142,7 +142,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 				pterm.LightCyan("status    ") + ": " + r.Status)
 
 	default:
-		log.Fatal("-format can be 'raw' or 'nice'")
+		log.Fatal("--format can be 'raw' or 'nice'")
 	}
 }
 
