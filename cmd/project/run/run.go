@@ -122,7 +122,6 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	}
 
 	switch format {
-
 	case "raw":
 		fmt.Println(string(data))
 
