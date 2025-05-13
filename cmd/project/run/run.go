@@ -102,14 +102,17 @@ func execute(cmd *cobra.Command, project string, branch string) {
 			log.Fatal(err)
 		}
 
-		if format == "raw" {
+		switch format {
+		case "raw":
 			log.Fatalf("status code error: %d %s\nmessage: %s", resp.StatusCode, resp.Status, e.Message)
-		} else if format == "nice" {
+		case "nice":
 			pterm.DefaultBasicText.Println(
 				pterm.LightCyan("HTTP status") + ": " + resp.Status + "\n" +
 					pterm.LightCyan("project    ") + ": " + project + "\n" +
 					pterm.LightCyan("branch     ") + ": " + branch + "\n" +
 					pterm.LightCyan("message    ") + ": " + e.Message + "\n")
+		default:
+			log.Fatal("--format can be 'raw' or 'nice'")
 		}
 
 		os.Exit(1)
