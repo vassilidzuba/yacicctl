@@ -11,30 +11,30 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package run
 
 import (
-	"fmt"
-	"os"
-	"log"
-	"strconv"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
 
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/pterm/pterm"
 )
 
 // runCmd represents the run command
 var Cmd = &cobra.Command{
 	Use:   "run <project> [<branch>]",
 	Short: "run a pipeline",
-	Long: `run a pipeline for a projects`,
+	Long:  `run a pipeline for a projects`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			execute(cmd, args[0], "main")
@@ -60,20 +60,20 @@ type ErrorResult struct {
 }
 
 func execute(cmd *cobra.Command, project string, branch string) {
-	
+
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
 
 	fmt.Println("project run called on", project, branch, "!")
-	
+
 	url := "http://" + host + "/yacic/project/run?project=" + project
 	if branch != "" {
-		url = url + "&branch=" + branch;
+		url = url + "&branch=" + branch
 	}
 
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -85,7 +85,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	format, _ := cmd.Flags().GetString("format")
 
@@ -94,50 +94,62 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	if resp.StatusCode != http.StatusOK {
 		// if the status code is not 200, we should log the status code and the
 		// status string, then exit with a fatal error
-		data1, _ := ioutil.ReadAll(resp.Body)
+		data1, _ := io.ReadAll(resp.Body)
 		e := ErrorResult{}
-		
-		json.Unmarshal(data1, &e)
-		
+
+		err := json.Unmarshal(data1, &e)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		if format == "raw" {
 			log.Fatalf("status code error: %d %s\nmessage: %s", resp.StatusCode, resp.Status, e.Message)
 		} else if format == "nice" {
 			pterm.DefaultBasicText.Println(
 				pterm.LightCyan("HTTP status") + ": " + resp.Status + "\n" +
-				pterm.LightCyan("project    ") + ": " + project + "\n" +
-				pterm.LightCyan("branch     ") + ": " + branch + "\n" +
-				pterm.LightCyan("message    ") + ": " + e.Message + "\n")
+					pterm.LightCyan("project    ") + ": " + project + "\n" +
+					pterm.LightCyan("branch     ") + ": " + branch + "\n" +
+					pterm.LightCyan("message    ") + ": " + e.Message + "\n")
 		}
-		
+
 		os.Exit(1)
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	if format == "raw" {
 		fmt.Println(string(data))
 	} else if format == "nice" {
 		var r Result
 
-		json.Unmarshal(data, &r)
-		
+		err := json.Unmarshal(data, &r)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		pterm.DefaultBasicText.Println(
 			pterm.LightCyan("project   ") + ": " + r.Project + "\n" +
-			pterm.LightCyan("branch    ") + ": " + r.Branch + "\n" +
-		    pterm.LightCyan("timestamp ") + ": " + r.Timestamp + "\n" +
-   			pterm.LightCyan("duration  ") + ": " + strconv.Itoa(r.Duration / 1000) + "s\n" +
-			pterm.LightCyan("status    ") + ": " + r.Status)
-		
+				pterm.LightCyan("branch    ") + ": " + r.Branch + "\n" +
+				pterm.LightCyan("timestamp ") + ": " + r.Timestamp + "\n" +
+				pterm.LightCyan("duration  ") + ": " + strconv.Itoa(r.Duration/1000) + "s\n" +
+				pterm.LightCyan("status    ") + ": " + r.Status)
+
 	} else {
 		log.Fatal("-format can be 'raw' or 'nice'")
+	}
+}
+
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
 }
-

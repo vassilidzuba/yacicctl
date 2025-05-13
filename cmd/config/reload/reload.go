@@ -11,16 +11,16 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package reload
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"io/ioutil"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,15 +30,14 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "reload",
 	Short: "reload the actions and pipelines declarations",
-	Long: `reload the actions and pipelines declarations from the files.`,
+	Long:  `reload the actions and pipelines declarations from the files.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		execute(cmd)
 	},
 }
 
+func execute(_ *cobra.Command) {
 
-func execute(cmd *cobra.Command) {
-	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
@@ -46,7 +45,7 @@ func execute(cmd *cobra.Command) {
 	url := "http://" + host + "/yacic/config/reload"
 
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -58,7 +57,7 @@ func execute(cmd *cobra.Command) {
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
@@ -70,11 +69,18 @@ func execute(cmd *cobra.Command) {
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(string(data))
+}
+
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func init() {

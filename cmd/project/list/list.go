@@ -11,7 +11,7 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package cmd
@@ -19,40 +19,40 @@ package cmd
 import (
 	"fmt"
 	"log"
-//	"strconv"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
 
+	//	"strconv"
+	"encoding/json"
+	"io"
+	"net/http"
+
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/pterm/pterm"
 )
 
 // listCmd represents the list command
 var Cmd = &cobra.Command{
 	Use:   "list",
 	Short: "list the projects",
-	Long: `list the projects referenbces in the database`,
+	Long:  `list the projects referenbces in the database`,
 	Run: func(cmd *cobra.Command, args []string) {
 		execute(cmd)
 	},
 }
 
-
 type Branch struct {
-	Branch  string   `json:"branchId"`
-	Dir     string   `json:"branchDir"`
+	Branch string `json:"branchId"`
+	Dir    string `json:"branchDir"`
 }
 
 type Result struct {
-	Project   string   `json:"projectId"`
-	Repo      string   `json:"repo"`
-	Branches  []Branch `json:"branches"`
+	Project  string   `json:"projectId"`
+	Repo     string   `json:"repo"`
+	Branches []Branch `json:"branches"`
 }
 
 func execute(cmd *cobra.Command) {
-	
+
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
@@ -60,7 +60,7 @@ func execute(cmd *cobra.Command) {
 	url := "http://" + host + "/yacic/project/list"
 
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -84,7 +84,7 @@ func execute(cmd *cobra.Command) {
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,18 +97,18 @@ func execute(cmd *cobra.Command) {
 		var r []Result
 
 		json.Unmarshal(data, &r)
-		
-//		if len(r) > 0 {
-//			pterm.DefaultBasicText.Println(
-//				pterm.LightCyan("project   ") + ": " + r[0].Project)
-//		}
-		
+
+		//		if len(r) > 0 {
+		//			pterm.DefaultBasicText.Println(
+		//				pterm.LightCyan("project   ") + ": " + r[0].Project)
+		//		}
+
 		tab := [][]string{{"Project", "Repo", "Branch", "Branch dir"}}
 
 		for _, e := range r {
 			for _, e2 := range e.Branches {
-		    	tab = append(tab, []string{e.Project, e.Repo, e2.Branch, e2.Dir})
-					e.Project = ""
+				tab = append(tab, []string{e.Project, e.Repo, e2.Branch, e2.Dir})
+				e.Project = ""
 				e.Repo = ""
 			}
 		}
@@ -123,5 +123,3 @@ func execute(cmd *cobra.Command) {
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
 }
-
-

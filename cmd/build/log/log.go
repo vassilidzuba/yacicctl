@@ -11,7 +11,7 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package list
@@ -19,9 +19,11 @@ package list
 import (
 	"fmt"
 	"log"
+
 	//"strconv"
+	"io"
 	"net/http"
-	"io/ioutil"
+
 	//"encoding/json"
 
 	"github.com/spf13/cobra"
@@ -33,7 +35,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "log <project> [<branch>] <pos>",
 	Short: "display the log of a build",
-	Long: `display the log of a build`,
+	Long:  `display the log of a build`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			execute(cmd, args[0], "", "")
@@ -47,9 +49,8 @@ var Cmd = &cobra.Command{
 	},
 }
 
+func execute(_ *cobra.Command, project string, branch string, timestamp string) {
 
-func execute(cmd *cobra.Command, project string, branch string, timestamp string) {
-	
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
@@ -58,10 +59,12 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 	if branch != "" {
 		url = url + "&branch=" + branch
 	}
-	url = url + "&timestamp=" + timestamp
-	
+	if timestamp != "" {
+		url = url + "&timestamp=" + timestamp
+	}
+
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -73,7 +76,7 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
@@ -85,15 +88,20 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	fmt.Println(string(data))
 }
 
-
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")

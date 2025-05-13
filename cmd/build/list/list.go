@@ -11,51 +11,50 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package list
 
 import (
-	"fmt"
-	"log"
-	"strconv"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strconv"
 
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/pterm/pterm"
 )
 
 // listCmd represents the list command
 var Cmd = &cobra.Command{
 	Use:   "list <project> [<branch>]",
 	Short: "list the buildsof a project/branch",
-	Long: `list the buildsof a project/branch.`,
+	Long:  `list the buildsof a project/branch.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			execute(cmd, args[0], "main")
 		} else if len(args) == 2 {
 			execute(cmd, args[0], args[1])
 		} else {
-			cmd.Usage()
+			_ = cmd.Usage()
 		}
 	},
 }
 
 type Result struct {
-	Project string `json:"projectId"`
-	Branch string `json:"branchId"`
+	Project   string `json:"projectId"`
+	Branch    string `json:"branchId"`
 	Timestamp string `json:"timestamp"`
-	Status string `json:"status"`
-	Duration int `json:"duration"`
+	Status    string `json:"status"`
+	Duration  int    `json:"duration"`
 }
 
-
 func execute(cmd *cobra.Command, project string, branch string) {
-	
+
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
@@ -66,7 +65,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	}
 
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -78,7 +77,7 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
@@ -90,11 +89,11 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	format, _ := cmd.Flags().GetString("format")
 
 	if format == "raw" {
@@ -103,19 +102,21 @@ func execute(cmd *cobra.Command, project string, branch string) {
 		var r []Result
 
 		json.Unmarshal(data, &r)
-		
+
 		if len(r) > 0 {
 			pterm.DefaultBasicText.Println(pterm.LightCyan("project") + ": " + r[0].Project + "\n" + pterm.LightCyan("branch ") + ": " + r[0].Branch)
 		}
-		
+
 		tab := [][]string{{"Timestamp", "Duration", "Status"}}
 
 		for _, e := range r {
-		    tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration / 1000) + "s", e.Status})
+			tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration/1000) + "s", e.Status})
 		}
 
-	
-		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		err := pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		pterm.Println() // Blank line
 	} else {
@@ -123,6 +124,12 @@ func execute(cmd *cobra.Command, project string, branch string) {
 	}
 }
 
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
