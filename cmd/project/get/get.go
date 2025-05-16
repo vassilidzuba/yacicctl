@@ -116,9 +116,11 @@ func execute(cmd *cobra.Command, project string, branch string, file string) {
 		_, err = f.Write(data)
 		check(err)
 		
-		f.Sync()
+		err = f.Close()
+		check(err)
 		
-		exec.Command("rundll32", "url.dll,FileProtocolHandler", file).Run()
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", file).Run()
+		check(err)
 	} else {
 		fmt.Println(string(data))
 	}
