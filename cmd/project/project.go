@@ -23,6 +23,7 @@ import (
 	
 	run "github.com/vassilidzuba/yacicctl/cmd/project/run"
 	list "github.com/vassilidzuba/yacicctl/cmd/project/list"
+	get "github.com/vassilidzuba/yacicctl/cmd/project/get"
 
 )
 
@@ -37,7 +38,7 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(run.Cmd, list.Cmd);
+	Cmd.AddCommand(run.Cmd, list.Cmd, get.Cmd);
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
