@@ -56,7 +56,7 @@ func execute(cmd *cobra.Command, project string, branch string, file string) {
 	password := viper.GetString("password")
 	host := viper.GetString("host")
 
-	fmt.Println("project run called on", project, branch, "!")
+	fmt.Println("project get called on", project, branch, file, "!")
 
 	url := "http://" + host + "/yacic/project/get?project=" + project + "&file=" + file
 	if branch != "" {
