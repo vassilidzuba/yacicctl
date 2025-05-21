@@ -51,6 +51,7 @@ type Result struct {
 	Timestamp string `json:"timestamp"`
 	Status    string `json:"status"`
 	Duration  int    `json:"duration"`
+	BuildId   int    `json:"build_id"`
 }
 
 func execute(cmd *cobra.Command, project string, branch string) {
@@ -113,10 +114,10 @@ func execute(cmd *cobra.Command, project string, branch string) {
 			pterm.DefaultBasicText.Println(pterm.LightCyan("project") + ": " + r[0].Project + "\n" + pterm.LightCyan("branch ") + ": " + r[0].Branch)
 		}
 
-		tab := [][]string{{"Timestamp", "Duration", "Status"}}
+		tab := [][]string{{"BuildId", "Timestamp", "Duration", "Status"}}
 
 		for _, e := range r {
-			tab = append(tab, []string{e.Timestamp, strconv.Itoa(e.Duration/1000) + "s", e.Status})
+			tab = append(tab, []string{strconv.Itoa(e.BuildId), e.Timestamp, strconv.Itoa(e.Duration/1000) + "s", e.Status})
 		}
 
 		err := pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
