@@ -14,50 +14,54 @@
    limitations under the License.
 **/
 
-package cmd
+package run
 
 import (
-	"fmt"
-	"log"
-
-	//	"strconv"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"os/exec"
 
-	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// listCmd represents the list command
+// runCmd represents the run command
 var Cmd = &cobra.Command{
-	Use:   "list",
-	Short: "list the projects",
-	Long:  `list the projects referenbces in the database`,
+	Use:   "get <project> [<branch>] file",
+	Short: "get a filee",
+	Long:  `get a file fom a projects`,
 	Run: func(cmd *cobra.Command, args []string) {
-		execute(cmd)
+		if len(args) == 2 {
+			execute(cmd, args[0], "main", args[1])
+		} else if len(args) == 3 {
+			execute(cmd, args[0], args[1], args[2])
+		} else {
+			_ = cmd.Usage()
+		}
 	},
 }
 
-type Branch struct {
-	Branch string `json:"branchId"`
-	Dir    string `json:"branchDir"`
+type ErrorResult struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
-type Result struct {
-	Project  string   `json:"projectId"`
-	Repo     string   `json:"repo"`
-	Branches []Branch `json:"branches"`
-}
-
-func execute(cmd *cobra.Command) {
+func execute(cmd *cobra.Command, project string, branch string, file string) {
 
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
 
-	url := "http://" + host + "/yacic/project/list"
+	fmt.Println("project get called on", project, branch, file, "!")
+
+	url := "http://" + host + "/yacic/project/get?project=" + project + "&file=" + file
+	if branch != "" {
+		url = url + "&branch=" + branch
+	}
 
 	log.Println("url:", url)
 
@@ -79,9 +83,20 @@ func execute(cmd *cobra.Command) {
 	if resp.StatusCode != http.StatusOK {
 		// if the status code is not 200, we should log the status code and the
 		// status string, then exit with a fatal error
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		//panic("bad")
+		data, _ := io.ReadAll(resp.Body)
+		e := ErrorResult{}
+
+		err := json.Unmarshal(data, &e)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Fatalf("status code error: %d %s\nmessage: %s", resp.StatusCode, resp.Status, e.Message)
+
+		os.Exit(1)
 	}
+	
+	show, _ := cmd.Flags().GetBool("show")
 
 	// print the response
 	data, err := io.ReadAll(resp.Body)
@@ -89,49 +104,34 @@ func execute(cmd *cobra.Command) {
 		log.Fatal(err)
 	}
 
-	format, _ := cmd.Flags().GetString("format")
-
-	switch format {
-
-	case "raw":
+	if show {
+		f, err := os.Create(file)
+		check(err)
+		defer func() {
+		        if err := f.Close(); err != nil {
+		            panic(err)
+		        }
+		    }()
+					
+		_, err = f.Write(data)
+		check(err)
+		
+		err = f.Close()
+		check(err)
+		
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", file).Run()
+		check(err)
+	} else {
 		fmt.Println(string(data))
-
-	case "nice":
-		var r []Result
-
-		err = json.Unmarshal(data, &r)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		//		if len(r) > 0 {
-		//			pterm.DefaultBasicText.Println(
-		//				pterm.LightCyan("project   ") + ": " + r[0].Project)
-		//		}
-
-		tab := [][]string{{"Project", "Repo", "Branch", "Branch dir"}}
-
-		for _, e := range r {
-			for _, e2 := range e.Branches {
-				tab = append(tab, []string{e.Project, e.Repo, e2.Branch, e2.Dir})
-				e.Project = ""
-				e.Repo = ""
-			}
-		}
-
-		err = pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-	default:
-		log.Fatal("-format can be 'raw' or 'nice'")
 	}
-
 }
 
 func closeBody(body *io.ReadCloser) {
 	err := (*body).Close()
+	check(err)
+}
+
+func check(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -139,4 +139,5 @@ func closeBody(body *io.ReadCloser) {
 
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
+	Cmd.Flags().BoolP("show", "s", false, "show in browser")
 }

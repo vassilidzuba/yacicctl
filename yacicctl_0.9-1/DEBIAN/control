@@ -1,0 +1,6 @@
+Package: yacicctl
+Version: 0.9-1
+Maintainer: Vassili Dzuba
+Architecture: amd64
+Description: YACIC CLI client
+

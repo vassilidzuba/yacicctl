@@ -1,0 +1,14 @@
+{
+	"project": "hellogo",
+	"repo": "http://odin.manul.lan:3000/vassili/hellogo.git",
+	"root": "/mnt/yacic",
+	
+	"pipeline": "go-build",
+	"branches": [
+		{"name": "main",            "dir": "b0"},
+		{"name": "feature/initial", "dir": "b1"}
+	],
+	"properties": [
+		{"key": "MAIN", "value": "hello.go"}
+	]
+}

@@ -1,3 +1,4 @@
 .project
 .settings
-go.sum
+*.exe
+coverage.html

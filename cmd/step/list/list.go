@@ -11,29 +11,29 @@
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
-   limitations under the License.	
+   limitations under the License.
 **/
 
 package list
 
 import (
-	"fmt"
-	"log"
-	"strconv"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"strconv"
 
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/pterm/pterm"
 )
 
 // listCmd represents the list command
 var Cmd = &cobra.Command{
 	Use:   "list <project> [<branch>] <timestamp>",
 	Short: "list the steps",
-	Long: `list the steps for a given build, identified by its project, branch and timestamp`,
+	Long:  `list the steps for a given build, identified by its project, branch and timestamp`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 2 {
 			execute(cmd, args[0], "", args[1])
@@ -45,20 +45,18 @@ var Cmd = &cobra.Command{
 	},
 }
 
-
 type Result struct {
-	Project string `json:"projectId"`
-	Branch string `json:"branchId"`
+	Project   string `json:"projectId"`
+	Branch    string `json:"branchId"`
 	Timestamp string `json:"timestamp"`
-	Step string `json:"stepId"`
-	Seq int `json:"seq"`
-	Status string `json:"status"`
-	Duration int `json:"duration"`
+	Step      string `json:"stepId"`
+	Seq       int    `json:"seq"`
+	Status    string `json:"status"`
+	Duration  int    `json:"duration"`
 }
 
-
 func execute(cmd *cobra.Command, project string, branch string, timestamp string) {
-	
+
 	username := viper.GetString("username")
 	password := viper.GetString("password")
 	host := viper.GetString("host")
@@ -68,9 +66,9 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 		url = url + "&branch=" + branch
 	}
 	url = url + "&timestamp=" + timestamp
-	
+
 	log.Println("url:", url)
-		
+
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(username, password)
 
@@ -82,7 +80,7 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 		// requested URL is not found, or if the server is not reachable.
 		log.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer closeBody(&resp.Body)
 
 	// if we want to check for a specific status code, we can do so here
 	// for example, a successful request should return a 200 OK status
@@ -94,40 +92,54 @@ func execute(cmd *cobra.Command, project string, branch string, timestamp string
 	}
 
 	// print the response
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	format, _ := cmd.Flags().GetString("format")
 
-	if format == "raw" {
+	switch format {
+	case "raw":
 		fmt.Println(string(data))
-	} else if format == "nice" {
+
+	case "nice":
 		var r []Result
 
-		json.Unmarshal(data, &r)
-		
+		err = json.Unmarshal(data, &r)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		if len(r) > 0 {
 			pterm.DefaultBasicText.Println(
 				pterm.LightCyan("project   ") + ": " + r[0].Project + "\n" +
-				pterm.LightCyan("branch    ") + ": " + r[0].Branch + "\n" +
-			    pterm.LightCyan("timestamp ") + ": " + r[0].Timestamp)
+					pterm.LightCyan("branch    ") + ": " + r[0].Branch + "\n" +
+					pterm.LightCyan("timestamp ") + ": " + r[0].Timestamp)
 		}
-		
+
 		tab := [][]string{{"Seq", "Step", "Duration", "Status"}}
 
 		for _, e := range r {
-		    tab = append(tab, []string{strconv.Itoa(e.Seq), e.Step, strconv.Itoa(e.Duration / 1000) + "s", e.Status})
+			tab = append(tab, []string{strconv.Itoa(e.Seq), e.Step, strconv.Itoa(e.Duration/1000) + "s", e.Status})
 		}
 
-		pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
-	} else {
+		err = pterm.DefaultTable.WithHasHeader().WithData(tab).Render()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	default:
 		log.Fatal("-format can be 'raw' or 'nice'")
 	}
 }
 
-
+func closeBody(body *io.ReadCloser) {
+	err := (*body).Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func init() {
 	Cmd.Flags().StringP("format", "f", "nice", "format, can be 'raw' or 'nice' (default)")
